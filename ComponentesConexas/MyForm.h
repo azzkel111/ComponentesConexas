@@ -348,7 +348,7 @@ namespace ComponentesConexas {
 		ReiniciarEstado();
 		modoManual = true;
 		btnIniciar->Enabled = true;
-		lblInfo->Text = "Modo manual: haz clic en un nodo y luego en otro para crear/quitar una arista.";
+		lblInfo->Text = "Modo manual: clic en un nodo y luego en otro para crear/quitar una arista; clic dos veces en el mismo nodo para crear/quitar un lazo.";
 		ActualizarMatriz();
 		panelGrafo->Invalidate();
 	}
@@ -358,11 +358,13 @@ namespace ComponentesConexas {
 		for (int i = 0; i < n; i++)
 			for (int j = 0; j < n; j++) ady[i, j] = 0;
 		for (int i = 0; i < n; i++)
-			for (int j = i + 1; j < n; j++)
-				if (rnd->NextDouble() < 0.2) {      // probabilidad de arista
+			for (int j = i; j < n; j++) {                 // j = i incluye la diagonal (lazos)
+				double prob = (i == j) ? 0.1 : 0.2;       // lazo menos probable
+				if (rnd->NextDouble() < prob) {
 					ady[i, j] = 1;
 					ady[j, i] = 1;
 				}
+			}
 		ReiniciarEstado();
 		modoManual = false;
 		btnIniciar->Enabled = true;
@@ -520,6 +522,21 @@ namespace ComponentesConexas {
 			for (int j = i + 1; j < n; j++)
 				if (ady[i, j] == 1) g->DrawLine(lapiz, pos[i], pos[j]);
 
+		// Lazos (un nodo apuntandose a si mismo)
+		for (int i = 0; i < n; i++) {
+			if (ady[i, i] == 1) {
+				double dx = pos[i].X - panelGrafo->Width / 2.0;
+				double dy = pos[i].Y - panelGrafo->Height / 2.0;
+				double len = Math::Sqrt(dx * dx + dy * dy);
+				if (len < 1) len = 1;
+				dx /= len; dy /= len;
+				int rl = 12;                                   // radio del lazo
+				int cx = (int)(pos[i].X + dx * (18 + rl - 4));
+				int cy = (int)(pos[i].Y + dy * (18 + rl - 4));
+				g->DrawEllipse(lapiz, cx - rl, cy - rl, 2 * rl, 2 * rl);
+			}
+		}
+
 		// Nodos
 		int R = 18;
 		System::Drawing::Font^ fuente = gcnew System::Drawing::Font("Arial", 10, FontStyle::Bold);
@@ -554,12 +571,11 @@ namespace ComponentesConexas {
 					seleccionado = i;
 				}
 				else {
-					if (seleccionado != i) {
-						int nuevo = 1 - ady[seleccionado, i];   // alterna arista
-						ady[seleccionado, i] = nuevo;
-						ady[i, seleccionado] = nuevo;
-						ActualizarMatriz();
-					}
+					// Alterna arista; si seleccionado == i, alterna el lazo ady[i, i]
+					int nuevo = 1 - ady[seleccionado, i];
+					ady[seleccionado, i] = nuevo;
+					ady[i, seleccionado] = nuevo;
+					ActualizarMatriz();
 					seleccionado = -1;
 				}
 				panelGrafo->Invalidate();
